@@ -1,0 +1,14 @@
+{
+    "$schema": "https://moddbcdn.vintagestory.at/schema/modinfo.latest.json",
+    "type": "Code",
+    "modid": "fishingconfig",
+    "name": "FishingConfig",
+    "authors": [
+        "Averixus"
+    ],
+    "description": "Fix bugs and add config settings for vanilla fishing",
+    "version": "1.0.0",
+    "dependencies": {
+        "game": "1.22.0"
+    }
+}
