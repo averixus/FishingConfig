@@ -135,8 +135,6 @@ namespace FishingConfig.Patches
             return false;
         }
     }
-
-    [HarmonyPatch(typeof(EntityBobber), "getRandomFishEntityProperties")]
     
     [HarmonyPatch(typeof(EntityBobber), "TryCatchFish")]
     public class TryCatchPatch
@@ -218,6 +216,8 @@ namespace FishingConfig.Patches
             return false;
         }
     }
+       
+    [HarmonyPatch(typeof(EntityBobber), "getRandomFishEntityProperties")]
     public class RandomFishPatch
     {
         static FieldInfo tmpPosField = typeof(EntityBobber).GetField("tmpPos", BindingFlags.Instance | BindingFlags.NonPublic); 
