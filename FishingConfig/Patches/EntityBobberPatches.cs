@@ -26,7 +26,7 @@ namespace FishingConfig.Patches
         static FieldInfo accumField = typeof(EntityBobber).GetField("accum", BindingFlags.Instance | BindingFlags.NonPublic);
         static MethodInfo playCatchEffects = typeof(EntityBobber).GetMethod("playCatchEffects", BindingFlags.Instance | BindingFlags.NonPublic);
         static MethodInfo printLocationDebugInfo = typeof(EntityBobber).GetMethod("printLocationDebugInfo", BindingFlags.Instance | BindingFlags.NonPublic);
-
+        static MethodInfo getRandomFishEntityProperties = typeof(EntityBobber).GetMethod("getRandomFishEntityProperties", BindingFlags.Instance | BindingFlags.NonPublic);
         public static bool Prefix(EntityBobber __instance, float dt)
         {
             TypedReference thisBobber = __makeref(__instance);
@@ -39,8 +39,9 @@ namespace FishingConfig.Patches
             float catchAccum = (float) catchAccumField.GetValueDirect(thisBobber);
             float accum = (float) accumField.GetValueDirect(thisBobber);
 
-            float abundanceValue = 0.5f;
-            __instance.HasCatchable(__instance.BaitStack, out abundanceValue);
+            object[] parameters = [__instance.BaitStack, 0.5f, false];
+            EntityProperties fishCatch = (EntityProperties) getRandomFishEntityProperties.Invoke(__instance, parameters);
+            float catchLikelihood = (float)parameters[1];
 
             if (__instance.Swimming && !wasSwimming)
             {
@@ -64,9 +65,9 @@ namespace FishingConfig.Patches
                 }
                 case EnumBobberState.FishNearby:
                 {
-                    if (swimmingAccum > 15f) // reset and check again if entity doesn't arrive after 15 seconds
+                    if (swimmingAccum > 15f) // if entity doesn't arrive after 15 seconds assume it's gone
                     {
-                        bobberState = EnumBobberState.Baiting;
+                        bobberState = EnumBobberState.NoFishNearby;
                     }
                     else // or catch if the entity comes close enough
                     {
@@ -83,9 +84,9 @@ namespace FishingConfig.Patches
                 }
                 case EnumBobberState.NoFishNearby:
                 {
-                    if (swimmingAccum > 5.0 / Math.Max(0.04, abundanceValue)) // wait according to abundance, then catch from stock
+                    if (catchLikelihood > 0 && swimmingAccum > 5.0 / Math.Max(0.04, catchLikelihood)) // wait according to abundance, then catch from stock
                     {
-                        bobberState = __instance.Api.World.Rand.NextDouble() < (double)junkCatchChance?
+                        bobberState = __instance.Api.World.Rand.NextDouble() < (double) junkCatchChance ?
                                 EnumBobberState.JunkCatch : EnumBobberState.NoEntityFishCatch; // catch junk or stock fish according to chance
                         catchAccum += dt;
                         playCatchEffects.Invoke(__instance, []);
@@ -213,7 +214,7 @@ namespace FishingConfig.Patches
                     __instance.World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
                 }
             }
-            
+
             return false;
         }
     }
@@ -279,22 +280,44 @@ namespace FishingConfig.Patches
                 }
             }
 
+            if (printDebug)
+            {
+                System.Diagnostics.Debug.WriteLine("1. Found suitable fish types: " + string.Join(", ", spawnable.Select(props => props.Code)));
+            }
+
             if (spawnable.Count == 0) // no abundance and no catch chance if no valid fish types
             {
                 __result = null;
                 return false;
             }
 
-            // Get local abundance and scale by pond size and overfishing
             double noisyAbundance = (__instance.Api.ModLoader.GetModSystem<FishingSupportModSystem>().NoiseGen.Noise(xYZ.X, xYZ.Z) - 0.4000000059604645) * 3.0;
             abundanceValue = (float)GameMath.Clamp(noisyAbundance, 0.20000000298023224, 1.0); 
+            if (printDebug)
+            {
+                System.Diagnostics.Debug.WriteLine("2. Fish frequency map value: " + abundanceValue);
+            }
+
             abundanceValue *= (float)pondSize / 1200f;
+            if (printDebug)
+            {
+                System.Diagnostics.Debug.WriteLine("Pond size: " + pondSize);
+            }
+
             float alreadyHarvested = __instance.Api.ModLoader.GetModSystem<ModSystemFishDepletion>().GetHarvestAmount(__instance.Pos.XYZ.AsBlockPos);
             float maxHarvestable = (float)ModSystemFishDepletion.MaxHarvestablePerLocation * 0.8f;
             float remainingHarvestable = 1f - GameMath.Clamp(alreadyHarvested / maxHarvestable - 0.2f, 0f, 1f);
             abundanceValue *= remainingHarvestable;
+           if (printDebug)
+            {
+                System.Diagnostics.Debug.WriteLine("4. Fish depletion here " + ((1 - remainingHarvestable) * 100) + "% (caught: " + alreadyHarvested + ")");
+            }
 
             __result = spawnable[__instance.Api.World.Rand.Next(spawnable.Count)];
+            if (printDebug)
+            {
+                System.Diagnostics.Debug.WriteLine("5. Randomly selected fish: " + __result.Code);
+            }
             return false;
         }
     }
