@@ -6,7 +6,7 @@ public class Options
 {
     public float junkCatchChance = 0.05f;
     public float reelInTimer = 0.7f;
-    //public bool catchStockFish = true; ?
+    public bool catchStockFish = true; 
     public float lureEntityTimer = 15f;
     public int harvestLimit = 12;
     public double harvestRestoreDays = 14d;

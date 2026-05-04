@@ -58,7 +58,7 @@ namespace FishingConfig
                     if (swimmingAccum > 1f) // wait 1 second after casting, then check for entities or stock
                     {
                         Entity nearestEntity = ep.GetNearestEntity(__instance.Pos.XYZ, 20.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
-                        bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : EnumBobberState.NoFishNearby;
+                        bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : options.catchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
                     break;
                 }
@@ -66,7 +66,7 @@ namespace FishingConfig
                 {
                     if (swimmingAccum > options.lureEntityTimer) // if entity doesn't arrive after 15 seconds assume it's gone
                     {
-                        bobberState = EnumBobberState.NoFishNearby;
+                        bobberState = options.catchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
                     else // or catch if the entity comes close enough
                     {
