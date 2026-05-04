@@ -201,15 +201,21 @@ namespace FishingConfig
                 }
             }
 
-            __instance.BaitStack = null;
-            __instance.WatchedAttributes.MarkPathDirty("baitStack");
-
-            foreach (ItemStack drop in drops)
+            if (drops.Length > 0)
             {
-                if (!entityCatcher.TryGiveItemStack(drop))
+                __instance.BaitStack = null;
+                __instance.WatchedAttributes.MarkPathDirty("baitStack");
+
+                foreach (ItemStack drop in drops)
                 {
-                    __instance.World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
+                    if (!entityCatcher.TryGiveItemStack(drop))
+                    {
+                        __instance.World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
+                    }
                 }
+
+                ItemSlot slot = entityCatcher.ActiveHandItemSlot;
+                slot.Itemstack.Collectible.DamageItem(__instance.World, entityCatcher, slot);
             }
 
             return false;
@@ -359,7 +365,6 @@ namespace FishingConfig
                     {
                         if (__result > FishingConfigModSystem.options.maxPondSize)
                         {
-                            Console.WriteLine("pond is >" + __result);
                             return false;
                         }
 
@@ -371,8 +376,20 @@ namespace FishingConfig
                     }
                 }
             }
-            Console.WriteLine("pond is " + __result);
             return false;
+        }
+    }
+
+/* This method gets called twice on the server side and I don't know why */
+    [HarmonyPatch(typeof(EntityBobber), "OnRopeRipped")]
+    public class RopeRippedPatch
+    {
+        public static bool Prefix(EntityBobber __instance, ClothSystem cs)
+        {
+            EntityAgent entity = __instance.Api.World.GetEntityById(__instance.AttachedToEntityId) as EntityAgent;
+            ItemSlot slot = entity?.ActiveHandItemSlot;
+            slot?.Itemstack?.Collectible?.DamageItem(__instance.Api.World, entity, slot);
+            return true;
         }
     }
 }
