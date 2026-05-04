@@ -55,18 +55,18 @@ namespace FishingConfig
             {
                 case EnumBobberState.Baiting:
                 {
-                    if (swimmingAccum > 1f) // wait 1 second after casting, then check for entities or stock
+                    if (swimmingAccum > options.StartSearchDelay) // wait after casting, then check for entities or stock
                     {
                         Entity nearestEntity = ep.GetNearestEntity(__instance.Pos.XYZ, 20.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
-                        bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : options.catchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
+                        bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : options.CatchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
                     break;
                 }
                 case EnumBobberState.FishNearby:
                 {
-                    if (swimmingAccum > options.lureEntityTimer) // if entity doesn't arrive after 15 seconds assume it's gone
+                    if (swimmingAccum > options.LureEntityTimer) // if entity doesn't arrive after a while, assume it's gone
                     {
-                        bobberState = options.catchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
+                        bobberState = options.CatchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
                     else // or catch if the entity comes close enough
                     {
@@ -83,9 +83,9 @@ namespace FishingConfig
                 }
                 case EnumBobberState.NoFishNearby:
                 {
-                    if (catchLikelihood > 0 && swimmingAccum > 5.0 / Math.Max(0.04, catchLikelihood)) // wait according to abundance, then catch from stock
+                    if (catchLikelihood > 0 && swimmingAccum > options.MinStockCatchTime / Math.Max(options.MinStockCatchTime / options.MaxStockCatchTime, catchLikelihood)) // wait according to abundance, then catch from stock
                     {
-                        bobberState = __instance.Api.World.Rand.NextDouble() < (double) options.junkCatchChance ?
+                        bobberState = __instance.Api.World.Rand.NextDouble() < (double) options.JunkCatchChance ?
                                 EnumBobberState.JunkCatch : EnumBobberState.NoEntityFishCatch; // catch junk or stock fish according to chance
                         catchAccum += dt;
                         playCatchEffects.Invoke(__instance, []);
@@ -96,7 +96,7 @@ namespace FishingConfig
                 case EnumBobberState.JunkCatch:
                 case EnumBobberState.NoCatch: // using this as an alias for EntityFishCatch which should be a separate state
                 {
-                    if (catchAccum > options.reelInTimer) // wait for player to reel in catch, then reset
+                    if (catchAccum > options.ReelInTimer) // wait for player to reel in catch, then reset
                     {
                         if (__instance.caughtFish != null) // if there's a fish entity, let it go
                         {
@@ -247,7 +247,7 @@ namespace FishingConfig
             }
 
             pondSize = pondSize < 0 ? (int) getPondSize.Invoke(__instance, []) : pondSize; // calculate if not yet done
-            if (pondSize < options.minPondSize) // no abundance and no catch chance if pond too small
+            if (pondSize < options.MinPondSize) // no abundance and no catch chance if pond too small
             {
                 __result = null;
                 return false;
@@ -304,7 +304,7 @@ namespace FishingConfig
                 System.Diagnostics.Debug.WriteLine("2. Fish frequency map value: " + abundanceValue);
             }
 
-            abundanceValue *= (float)pondSize / options.maxPondSize;
+            abundanceValue *= (float)pondSize / options.MaxPondSize;
             if (printDebug)
             {
                 System.Diagnostics.Debug.WriteLine("Pond size: " + pondSize);
@@ -363,7 +363,7 @@ namespace FishingConfig
                     FastVec3i pos = new FastVec3i(blockPos);
                     if (visited.Add(pos))
                     {
-                        if (__result > FishingConfigModSystem.options.maxPondSize)
+                        if (__result > FishingConfigModSystem.options.MaxPondSize)
                         {
                             return false;
                         }
