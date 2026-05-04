@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods;
 
-namespace FishingConfig.Patches
+namespace FishingConfig
 {
     [HarmonyPatch(typeof(EntityBobber), "onServertick")]
     public class ServerTickPatch
@@ -21,7 +21,6 @@ namespace FishingConfig.Patches
         static FieldInfo swimmingAccumField = typeof(EntityBobber).GetField("swimmingAccum", BindingFlags.Instance | BindingFlags.NonPublic);
         static FieldInfo bobberStateField = typeof(EntityBobber).GetField("bobberState", BindingFlags.Instance | BindingFlags.NonPublic);
         static FieldInfo epField = typeof(EntityBobber).GetField("ep", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo junkCatchChanceField = typeof(EntityBobber).GetField("junkCatchChance", BindingFlags.Instance | BindingFlags.NonPublic);
         static FieldInfo catchAccumField = typeof(EntityBobber).GetField("catchAccum", BindingFlags.Instance | BindingFlags.NonPublic);
         static FieldInfo accumField = typeof(EntityBobber).GetField("accum", BindingFlags.Instance | BindingFlags.NonPublic);
         static MethodInfo playCatchEffects = typeof(EntityBobber).GetMethod("playCatchEffects", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -35,9 +34,9 @@ namespace FishingConfig.Patches
             float swimmingAccum = (float) swimmingAccumField.GetValueDirect(thisBobber);
             EnumBobberState bobberState = (EnumBobberState) bobberStateField.GetValueDirect(thisBobber);
             EntityPartitioning ep = (EntityPartitioning) epField.GetValueDirect(thisBobber);
-            float junkCatchChance = (float) junkCatchChanceField.GetValueDirect(thisBobber);
             float catchAccum = (float) catchAccumField.GetValueDirect(thisBobber);
             float accum = (float) accumField.GetValueDirect(thisBobber);
+            Options options = FishingConfigModSystem.options;
 
             object[] parameters = [__instance.BaitStack, 0.5f, false];
             EntityProperties fishCatch = (EntityProperties) getRandomFishEntityProperties.Invoke(__instance, parameters);
@@ -65,7 +64,7 @@ namespace FishingConfig.Patches
                 }
                 case EnumBobberState.FishNearby:
                 {
-                    if (swimmingAccum > 15f) // if entity doesn't arrive after 15 seconds assume it's gone
+                    if (swimmingAccum > options.lureEntityTimer) // if entity doesn't arrive after 15 seconds assume it's gone
                     {
                         bobberState = EnumBobberState.NoFishNearby;
                     }
@@ -86,7 +85,7 @@ namespace FishingConfig.Patches
                 {
                     if (catchLikelihood > 0 && swimmingAccum > 5.0 / Math.Max(0.04, catchLikelihood)) // wait according to abundance, then catch from stock
                     {
-                        bobberState = __instance.Api.World.Rand.NextDouble() < (double) junkCatchChance ?
+                        bobberState = __instance.Api.World.Rand.NextDouble() < (double) options.junkCatchChance ?
                                 EnumBobberState.JunkCatch : EnumBobberState.NoEntityFishCatch; // catch junk or stock fish according to chance
                         catchAccum += dt;
                         playCatchEffects.Invoke(__instance, []);
@@ -97,7 +96,7 @@ namespace FishingConfig.Patches
                 case EnumBobberState.JunkCatch:
                 case EnumBobberState.NoCatch: // using this as an alias for EntityFishCatch which should be a separate state
                 {
-                    if (catchAccum > 0.7f) // wait 0.7 seconds for player to reel in catch, then reset
+                    if (catchAccum > options.reelInTimer) // wait for player to reel in catch, then reset
                     {
                         if (__instance.caughtFish != null) // if there's a fish entity, let it go
                         {
@@ -229,6 +228,7 @@ namespace FishingConfig.Patches
             TypedReference thisBobber = __makeref(__instance);
             BlockPos tmpPos = (BlockPos) tmpPosField.GetValueDirect(thisBobber); 
             int pondSize = (int) pondSizeField.GetValueDirect(thisBobber);
+            Options options = FishingConfigModSystem.options;
 
             abundanceValue = 0f;
 
@@ -241,7 +241,7 @@ namespace FishingConfig.Patches
             }
 
             pondSize = pondSize < 0 ? (int) getPondSize.Invoke(__instance, []) : pondSize; // calculate if not yet done
-            if (pondSize < 100) // no abundance and no catch chance if pond too small
+            if (pondSize < options.minPondSize) // no abundance and no catch chance if pond too small
             {
                 __result = null;
                 return false;
@@ -298,7 +298,7 @@ namespace FishingConfig.Patches
                 System.Diagnostics.Debug.WriteLine("2. Fish frequency map value: " + abundanceValue);
             }
 
-            abundanceValue *= (float)pondSize / 1200f;
+            abundanceValue *= (float)pondSize / options.maxPondSize;
             if (printDebug)
             {
                 System.Diagnostics.Debug.WriteLine("Pond size: " + pondSize);
@@ -318,6 +318,60 @@ namespace FishingConfig.Patches
             {
                 System.Diagnostics.Debug.WriteLine("5. Randomly selected fish: " + __result.Code);
             }
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(EntityBobber), "getPondSize")]
+    public class PondSizePatch
+    {
+        static FieldInfo visitedField = typeof(EntityBobber).GetField("visited", BindingFlags.Instance | BindingFlags.NonPublic); 
+        static FieldInfo bfsQueueField = typeof(EntityBobber).GetField("bfsQueue", BindingFlags.Instance | BindingFlags.NonPublic); 
+        
+        public static bool Prefix(EntityBobber __instance, ref int __result)
+        {
+            TypedReference thisBobber = __makeref(__instance);
+            HashSet<FastVec3i> visited = (HashSet<FastVec3i>) visitedField.GetValueDirect(thisBobber); 
+            Queue<FastVec3i> bfsQueue = (Queue<FastVec3i>) bfsQueueField.GetValueDirect(thisBobber); 
+
+            IBlockAccessor blockAccessor = __instance.Api.World.BlockAccessor;
+            visited.Clear();
+            bfsQueue.Clear();
+            BlockPos blockPos = __instance.Pos.AsBlockPos;
+            bfsQueue.Enqueue(new FastVec3i(blockPos.X, blockPos.Y, blockPos.Z));
+            BlockFacing[] directions =
+            [
+                BlockFacing.NORTH,
+                BlockFacing.EAST,
+                BlockFacing.SOUTH,
+                BlockFacing.WEST,
+                BlockFacing.DOWN
+            ];
+            __result = 0;
+            while (bfsQueue.Count > 0)
+            {
+                FastVec3i next = bfsQueue.Dequeue();
+                foreach (BlockFacing direction in directions)
+                {
+                    blockPos.Set(next.X + direction.Normali.X, next.Y + direction.Normali.Y, next.Z + direction.Normali.Z);
+                    FastVec3i pos = new FastVec3i(blockPos);
+                    if (visited.Add(pos))
+                    {
+                        if (__result > FishingConfigModSystem.options.maxPondSize)
+                        {
+                            Console.WriteLine("pond is >" + __result);
+                            return false;
+                        }
+
+                        if (blockAccessor.GetBlock(blockPos, 2).Id != 0)
+                        {
+                            bfsQueue.Enqueue(pos);
+                            __result++;
+                        }
+                    }
+                }
+            }
+            Console.WriteLine("pond is " + __result);
             return false;
         }
     }
