@@ -226,14 +226,12 @@ namespace FishingConfig
     [HarmonyPatch(typeof(EntityBobber), "getRandomFishEntityProperties")]
     public class RandomFishPatch
     {
-        static FieldInfo tmpPosField = typeof(EntityBobber).GetField("tmpPos", BindingFlags.Instance | BindingFlags.NonPublic); 
         static FieldInfo pondSizeField = typeof(EntityBobber).GetField("pondSize", BindingFlags.Instance | BindingFlags.NonPublic);
         static MethodInfo getPondSize = typeof(EntityBobber).GetMethod("getPondSize", BindingFlags.Instance | BindingFlags.NonPublic);
 
         public static bool Prefix(EntityBobber __instance, ItemStack baitStack, out float abundanceValue, bool printDebug, ref EntityProperties __result)
         {
             TypedReference thisBobber = __makeref(__instance);
-            BlockPos tmpPos = (BlockPos) tmpPosField.GetValueDirect(thisBobber); 
             int pondSize = (int) pondSizeField.GetValueDirect(thisBobber);
             Options options = FishingConfigModSystem.options;
 
