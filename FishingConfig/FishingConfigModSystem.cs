@@ -31,8 +31,8 @@ public class FishingConfigModSystem : ModSystem
         var harmony = new Harmony(Mod.Info.ModID);
         harmony.PatchAll(typeof(FishingConfigModSystem).Assembly);
 
-        api.ModLoader.GetModSystem<ModSystemFishDepletion>()?.Scale = options.HarvestScale;
-        ModSystemFishDepletion.MaxHarvestablePerLocation = options.HarvestLimit;
-        ModSystemFishDepletion.RestoreFishAfterDays = options.HarvestRestoreDays;
+        api.ModLoader.GetModSystem<ModSystemFishDepletion>()?.Scale = options.FishHarvestScale;
+        ModSystemFishDepletion.MaxHarvestablePerLocation = options.FishHarvestLimit;
+        ModSystemFishDepletion.RestoreFishAfterDays = options.FishHarvestRestoreDays;
     }
 }

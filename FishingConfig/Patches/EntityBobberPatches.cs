@@ -55,7 +55,7 @@ namespace FishingConfig
             {
                 case EnumBobberState.Baiting:
                 {
-                    if (swimmingAccum > options.StartSearchDelay) // wait after casting, then check for entities or stock
+                    if (swimmingAccum > options.FishStartSearchDelay) // wait after casting, then check for entities or stock
                     {
                         Entity nearestEntity = ep.GetNearestEntity(__instance.Pos.XYZ, 20.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
                         bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : options.CatchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
@@ -64,7 +64,7 @@ namespace FishingConfig
                 }
                 case EnumBobberState.FishNearby:
                 {
-                    if (swimmingAccum > options.LureEntityTimer) // if entity doesn't arrive after a while, assume it's gone
+                    if (swimmingAccum > options.FishLureEntityTimer) // if entity doesn't arrive after a while, assume it's gone
                     {
                         bobberState = options.CatchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
@@ -216,6 +216,7 @@ namespace FishingConfig
 
                 ItemSlot slot = entityCatcher.ActiveHandItemSlot;
                 slot.Itemstack.Collectible.DamageItem(__instance.World, entityCatcher, slot);
+                slot.MarkDirty();
             }
 
             return false;
@@ -389,6 +390,7 @@ namespace FishingConfig
             EntityAgent entity = __instance.Api.World.GetEntityById(__instance.AttachedToEntityId) as EntityAgent;
             ItemSlot slot = entity?.ActiveHandItemSlot;
             slot?.Itemstack?.Collectible?.DamageItem(__instance.Api.World, entity, slot);
+            slot?.MarkDirty();
             return true;
         }
     }
