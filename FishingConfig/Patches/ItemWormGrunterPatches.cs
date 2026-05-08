@@ -130,7 +130,7 @@ namespace FishingConfig
 
             if (byEntity.Controls.CtrlKey)
             {
-                // base.OnHeldInteractStart
+                // taking the relevant parts from base.OnHeldInteractStart
                 EnumHandHandling handHandling = EnumHandHandling.NotHandled;
                 bool flag = false;
                 CollectibleBehavior[] collectibleBehaviors = __instance.CollectibleBehaviors;
@@ -152,15 +152,7 @@ namespace FishingConfig
 
                 if (!flag)
                 {
-                    if (blockSel != null && getCoolingMedium.Invoke(__instance, [blockSel]) != null && __instance.GetTemperature(api.World, slot.Itemstack) > (float)GlobalConstants.TooHotToTouchTemperature)
-                    {
-                        handling = EnumHandHandling.Handled;
-                        return false;
-                    }
-
-                    object[] parameters = [slot, byEntity, handHandling];
-                    tryEatBegin.Invoke(__instance, parameters);
-                    handling = (EnumHandHandling) parameters[2];
+                    handling = handHandling;
                 }
                 // end base.OnHeldInteractStart
 
