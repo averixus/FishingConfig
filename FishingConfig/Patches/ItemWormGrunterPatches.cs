@@ -84,6 +84,30 @@ namespace FishingConfig
             return false;
         }
     }
+
+    [HarmonyPatch(typeof(ModSystemWormGrunting), "AddHarvest")]
+    public class AddHarvestPatch
+    {
+        static FieldInfo harvestedLocationsField = typeof(ModSystemWormGrunting).GetField("harvestedLocations", BindingFlags.Instance | BindingFlags.NonPublic);
+        static FieldInfo sapiField = typeof(ModSystemWormGrunting).GetField("sapi", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        public static bool Prefix(ModSystemWormGrunting __instance, BlockPos pos, int quantity)
+        {
+            TypedReference thisSystem = __makeref(__instance);
+            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = (Dictionary<BlockPos, CreatureHarvest>) harvestedLocationsField.GetValueDirect(thisSystem);
+            ICoreServerAPI sapi = (ICoreServerAPI) sapiField.GetValueDirect(thisSystem);
+            Options options = FishingConfigModSystem.options;
+
+            harvestedLocations.TryGetValue(pos / options.WormHarvestScale, out var value);
+            harvestedLocations[pos / options.WormHarvestScale] = new CreatureHarvest
+            {
+                TotalDays = sapi.World.Calendar.TotalDays,
+                Quantity = value.Quantity + quantity
+            };
+
+            return false;
+        }
+    }
         
     [HarmonyPatch(typeof(ItemWormGrunter), "OnHeldInteractStart")]
     public class InteractStartPatch
