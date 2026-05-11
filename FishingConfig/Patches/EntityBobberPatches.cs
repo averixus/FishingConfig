@@ -76,10 +76,11 @@ namespace FishingConfig
                             bobberState = EnumBobberState.NoFishNearby;
                         }
                     }
-                    else // or catch if the entity comes close enough
+                    else // or catch if the entity comes close enough and attracted to bait
                     {
                         Entity nearestEntity = ep.GetNearestEntity(__instance.Pos.XYZ, 1.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
-                        if (nearestEntity != null) 
+                        string bait = __instance.BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
+                        if (nearestEntity != null && nearestEntity.Properties.Attributes["baitTags"].AsArray<string>().Contains<string>(bait))
                         {
                             bobberState = EnumBobberState.NoCatch; // using this as an alias for EntityFishCatch which should be a separate state
                             __instance.caughtFish = nearestEntity as EntityFish;
