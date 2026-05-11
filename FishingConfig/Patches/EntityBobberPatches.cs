@@ -66,14 +66,15 @@ namespace FishingConfig
                 {
                     if (swimmingAccum > options.FishLureEntityTimer) // if entity doesn't arrive after a while, assume it's gone
                     {
-                        if (options.CatchStockFish) // reset to try again if not catching stock fish
+                        if (options.CatchStockFish) // switch to stock fish
+                        {
+                            bobberState = EnumBobberState.NoFishNearby;
+
+                        }
+                        else // or reset to try again if not catching stock fish
                         {
                             bobberState = EnumBobberState.Baiting;
                             swimmingAccum = 1f;
-                        }
-                        else // otherwise switch to stock fish
-                        {
-                            bobberState = EnumBobberState.NoFishNearby;
                         }
                     }
                     else // or catch if the entity comes close enough and attracted to bait
