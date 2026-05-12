@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using HarmonyLib;
 using Vintagestory.API.Common;
@@ -17,46 +19,51 @@ namespace FishingConfig
     [HarmonyPatch(typeof(EntityBobber), "onServertick")]
     public class ServerTickPatch
     {
-        static FieldInfo wasSwimmingField = typeof(EntityBobber).GetField("wasSwimming", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo swimmingAccumField = typeof(EntityBobber).GetField("swimmingAccum", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo bobberStateField = typeof(EntityBobber).GetField("bobberState", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo epField = typeof(EntityBobber).GetField("ep", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo catchAccumField = typeof(EntityBobber).GetField("catchAccum", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo accumField = typeof(EntityBobber).GetField("accum", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo playCatchEffects = typeof(EntityBobber).GetMethod("playCatchEffects", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo printLocationDebugInfo = typeof(EntityBobber).GetMethod("printLocationDebugInfo", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo getRandomFishEntityProperties = typeof(EntityBobber).GetMethod("getRandomFishEntityProperties", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "wasSwimming")]
+        extern static ref bool getWasSwimming(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "swimmingAccum")]
+        extern static ref float getSwimmingAccum(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "bobberState")]
+        extern static ref EnumBobberState getBobberState(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "ep")]
+        extern static ref EntityPartitioning getEp(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "catchAccum")]
+        extern static ref float getCatchAccum(EntityBobber @this);
+
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "playCatchEffects")]
+        extern static void playCatchEffects(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "printLocationDebugInfo")]
+        extern static void printLocationDebugInfo(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "getRandomFishEntityProperties")]
+        extern static EntityProperties getRandomFishEntityProperties(EntityBobber @this, ItemStack baitStack, out float abundanceValue, bool printDebug = false);
+        
         public static bool Prefix(EntityBobber __instance, float dt)
         {
-            TypedReference thisBobber = __makeref(__instance);
-
-            bool wasSwimming = (bool) wasSwimmingField.GetValueDirect(thisBobber);
-            float swimmingAccum = (float) swimmingAccumField.GetValueDirect(thisBobber);
-            EnumBobberState bobberState = (EnumBobberState) bobberStateField.GetValueDirect(thisBobber);
-            EntityPartitioning ep = (EntityPartitioning) epField.GetValueDirect(thisBobber);
-            float catchAccum = (float) catchAccumField.GetValueDirect(thisBobber);
-            float accum = (float) accumField.GetValueDirect(thisBobber);
+            ref bool wasSwimming = ref getWasSwimming(__instance);
+            ref float swimmingAccum = ref getSwimmingAccum(__instance);
+            ref EnumBobberState bobberState = ref getBobberState(__instance);
+            ref EntityPartitioning ep = ref getEp(__instance);
+            ref float catchAccum = ref getCatchAccum(__instance);
             Options options = FishingConfigModSystem.options;
 
-            object[] parameters = [__instance.BaitStack, 0.5f, false];
-            EntityProperties fishCatch = (EntityProperties) getRandomFishEntityProperties.Invoke(__instance, parameters);
-            float catchLikelihood = (float)parameters[1];
+            getRandomFishEntityProperties(__instance, __instance.BaitStack, out float catchLikelihood, false);
+            Console.WriteLine("[FishingConfig] catch likelihood retrieved " + catchLikelihood);
 
             if (__instance.Swimming && !wasSwimming)
             {
+                Console.WriteLine("[FishingConfig] Bobber landed in water");
+                if (__instance.Api.World.EntityDebugMode) printLocationDebugInfo(__instance);
                 wasSwimming = true;
-                if (__instance.Api.World.EntityDebugMode)
-                {
-                    printLocationDebugInfo.Invoke(__instance, []);
-                }
             }
 
+            Console.WriteLine("[FishingConfig] Bobber state at start of tick: " + bobberState);
             switch(bobberState)
             {
                 case EnumBobberState.Baiting:
                 {
                     if (swimmingAccum > options.FishStartSearchDelay) // wait after casting, then check for entities or stock
                     {
+                        Console.WriteLine("[FishingConfig] Checking for nearby entities");
                         Entity nearestEntity = ep.GetNearestEntity(__instance.Pos.XYZ, 20.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
                         bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : options.CatchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
@@ -68,11 +75,13 @@ namespace FishingConfig
                     {
                         if (options.CatchStockFish) // switch to stock fish
                         {
+                            Console.WriteLine("[FishingConfig] Entity has not arrived in time, switching to stock fish");
                             bobberState = EnumBobberState.NoFishNearby;
 
                         }
                         else // or reset to try again if not catching stock fish
                         {
+                            Console.WriteLine("[FishingConfig] Entity has not arrived in time, resetting to baiting");
                             bobberState = EnumBobberState.Baiting;
                             swimmingAccum = 1f;
                         }
@@ -83,10 +92,11 @@ namespace FishingConfig
                         string bait = __instance.BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
                         if (nearestEntity != null && nearestEntity.Properties.Attributes["baitTags"].AsArray<string>().Contains<string>(bait))
                         {
+                            Console.WriteLine("[FishingConfig] Catching entity " + nearestEntity);
                             bobberState = EnumBobberState.NoCatch; // using this as an alias for EntityFishCatch which should be a separate state
                             __instance.caughtFish = nearestEntity as EntityFish;
                             catchAccum += dt;
-                            playCatchEffects.Invoke(__instance, []);
+                            playCatchEffects(__instance);// .Invoke(__instance, []);
                         }
                     }
                     break;    
@@ -95,10 +105,11 @@ namespace FishingConfig
                 {
                     if (catchLikelihood > 0 && swimmingAccum > options.MinStockCatchTime / Math.Max(options.MinStockCatchTime / options.MaxStockCatchTime, catchLikelihood)) // wait according to abundance, then catch from stock
                     {
+                        Console.WriteLine("[FishingConfig] Catching from stock");
                         bobberState = __instance.Api.World.Rand.NextDouble() < (double) options.JunkCatchChance ?
                                 EnumBobberState.JunkCatch : EnumBobberState.NoEntityFishCatch; // catch junk or stock fish according to chance
                         catchAccum += dt;
-                        playCatchEffects.Invoke(__instance, []);
+                        playCatchEffects(__instance);
                     }   
                     break;
                 }
@@ -108,8 +119,10 @@ namespace FishingConfig
                 {
                     if (catchAccum > options.ReelInTimer) // wait for player to reel in catch, then reset
                     {
+                        Console.WriteLine("[FishingConfig] Player too slow to reel in");
                         if (__instance.caughtFish != null) // if there's a fish entity, let it go
                         {
+                            Console.WriteLine("[FishingConfig] Releasing entity");
                             AiTaskManager taskManager = __instance.caughtFish.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
                             IAiTask aiTask = taskManager?.GetTask("fleebobber");
                             if (aiTask != null)
@@ -127,19 +140,12 @@ namespace FishingConfig
                     }
                     else
                     {
+                        Console.WriteLine("[FishingConfig] Waiting for player to reel in");
                         catchAccum += dt;
                     }
                     break;
                 }
             }
-
-            wasSwimmingField.SetValueDirect(thisBobber, wasSwimming);
-            swimmingAccumField.SetValueDirect(thisBobber, swimmingAccum);
-            bobberStateField.SetValueDirect(thisBobber, bobberState);
-            // epField.SetValueDirect(thisBobber, ep); never edited
-            // junkCatchChanceField.SetValueDirect(thisBobber, junkCatchChance); never edited
-            catchAccumField.SetValueDirect(thisBobber, catchAccum);
-            accumField.SetValueDirect(thisBobber, accum);
 
             return false;
         }
@@ -148,14 +154,16 @@ namespace FishingConfig
     [HarmonyPatch(typeof(EntityBobber), "TryCatchFish")]
     public class TryCatchPatch
     {
-        static FieldInfo bobberStateField = typeof(EntityBobber).GetField("bobberState", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo getRandomFishEntityProperties = typeof(EntityBobber).GetMethod("getRandomFishEntityProperties", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "bobberState")]
+        extern static ref EnumBobberState getBobberState(EntityBobber @this);
 
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "getRandomFishEntityProperties")]
+        extern static EntityProperties getRandomFishEntityProperties(EntityBobber @this, ItemStack baitStack, out float abundanceValue, bool printDebug = false);
+        
         public static bool Prefix(EntityBobber __instance, EntityAgent entityCatcher)
         {
-            TypedReference thisBobber = __makeref(__instance);
-
-            EnumBobberState bobberState = (EnumBobberState) bobberStateField.GetValueDirect(thisBobber);
+            EnumBobberState bobberState = getBobberState(__instance);
+            Options options = FishingConfigModSystem.options;
  
             ItemStack[] drops = [];
 
@@ -165,6 +173,7 @@ namespace FishingConfig
                 {
                     if (__instance.caughtFish != null && __instance.caughtFish.Alive)
                     {
+                        Console.WriteLine("[FishingConfig] Killing entity and getting drops");
                         __instance.caughtFish.Die(EnumDespawnReason.Expire);
                         drops = __instance.caughtFish.GetDrops(__instance.World, __instance.caughtFish.Pos.XYZInt.AsBlockPos, (entityCatcher as EntityPlayer)?.Player);
                     }
@@ -172,9 +181,8 @@ namespace FishingConfig
                 }
                 case EnumBobberState.NoEntityFishCatch:
                 {
-                    object[] parameters = [__instance.BaitStack, 0f, false];
-                    EntityProperties fishCatch = (EntityProperties) getRandomFishEntityProperties.Invoke(__instance, parameters);
-                    float abundanceValue = (float)parameters[1];
+                    Console.WriteLine("[FishingConfig] Getting aged fish drops from stock");
+                    EntityProperties fishCatch = getRandomFishEntityProperties(__instance, __instance.BaitStack, out float abundanceValue, false);
 
                     ItemStack fishStack = fishCatch.Drops[0].ResolvedItemstack;
                     string age = (__instance.Api.World.Rand.NextDouble() < (double) abundanceValue) ? "adult" : "juvenile"; // reversed check so that lower abundance = fewer adults
@@ -189,6 +197,7 @@ namespace FishingConfig
                 }
                 case EnumBobberState.JunkCatch:
                 {
+                    Console.WriteLine("[FishingConfig] Getting junk drop");
                     WeightedBlockDropItemstack[] junkCatches = __instance.Properties.Attributes["junkCatches"].AsObject<WeightedBlockDropItemstack[]>();
                     double total = 0d;
                     foreach (WeightedBlockDropItemstack junkCatch in junkCatches)
@@ -236,13 +245,16 @@ namespace FishingConfig
     [HarmonyPatch(typeof(EntityBobber), "getRandomFishEntityProperties")]
     public class RandomFishPatch
     {
-        static FieldInfo pondSizeField = typeof(EntityBobber).GetField("pondSize", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo getPondSize = typeof(EntityBobber).GetMethod("getPondSize", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "pondSize")]
+        extern static ref int getCurrentPondSize(EntityBobber @this);
+
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "getPondSize")]
+        extern static int calculatePondSize(EntityBobber @this);
 
         public static bool Prefix(EntityBobber __instance, ItemStack baitStack, out float abundanceValue, bool printDebug, ref EntityProperties __result)
         {
-            TypedReference thisBobber = __makeref(__instance);
-            int pondSize = (int) pondSizeField.GetValueDirect(thisBobber);
+            Console.WriteLine("[FishingConfig] getRandomFishEntityProperties");
+            int pondSize = getCurrentPondSize(__instance);
             Options options = FishingConfigModSystem.options;
 
             abundanceValue = 0f;
@@ -251,13 +263,15 @@ namespace FishingConfig
 
             if (climate == null) // no abundance and no catch chance if invalid climate
             {
+                Console.WriteLine("[FishingConfig] Invalid climate for fish stock");
                 __result = null;
                 return false;
             }
 
-            pondSize = pondSize < 0 ? (int) getPondSize.Invoke(__instance, []) : pondSize; // calculate if not yet done
+            pondSize = pondSize < 0 ? (int) calculatePondSize(__instance) : pondSize; // calculate if not yet done
             if (pondSize < options.MinPondSize) // no abundance and no catch chance if pond too small
             {
+                Console.WriteLine("[FishingConfig] Pond too small for fish stock");
                 __result = null;
                 return false;
             }
@@ -290,49 +304,38 @@ namespace FishingConfig
 
                     if (likesBait && animalMap.GetUnpaddedLerped(xInAnimalMap, zInAnimalMap) > 128f)
                     {
+                        Console.WriteLine("[FishingConfig] Adding possible catch to fish stock: " + entityType.Class);
                         spawnable.Add(entityType);
                     }
                 }
             }
 
-            if (printDebug)
-            {
-                System.Diagnostics.Debug.WriteLine("1. Found suitable fish types: " + string.Join(", ", spawnable.Select(props => props.Code)));
-            }
+            if (printDebug) System.Diagnostics.Debug.WriteLine("1. Found suitable fish types: " + string.Join(", ", spawnable.Select(props => props.Code)));
 
             if (spawnable.Count == 0) // no abundance and no catch chance if no valid fish types
             {
+                Console.WriteLine("[FishingConfig] No valid stock fish");
                 __result = null;
                 return false;
             }
 
             double noisyAbundance = (__instance.Api.ModLoader.GetModSystem<FishingSupportModSystem>().NoiseGen.Noise(xYZ.X, xYZ.Z) - 0.4000000059604645) * 3.0;
             abundanceValue = (float)GameMath.Clamp(noisyAbundance, 0.20000000298023224, 1.0); 
-            if (printDebug)
-            {
-                System.Diagnostics.Debug.WriteLine("2. Fish frequency map value: " + abundanceValue);
-            }
+            if (printDebug) System.Diagnostics.Debug.WriteLine("2. Fish frequency map value: " + abundanceValue);
 
             abundanceValue *= (float)pondSize / options.MaxPondSize;
-            if (printDebug)
-            {
-                System.Diagnostics.Debug.WriteLine("Pond size: " + pondSize);
-            }
+            if (printDebug) System.Diagnostics.Debug.WriteLine("Pond size: " + pondSize);
 
             float alreadyHarvested = __instance.Api.ModLoader.GetModSystem<ModSystemFishDepletion>().GetHarvestAmount(__instance.Pos.XYZ.AsBlockPos);
             float maxHarvestable = (float)ModSystemFishDepletion.MaxHarvestablePerLocation * 0.8f;
             float remainingHarvestable = 1f - GameMath.Clamp(alreadyHarvested / maxHarvestable - 0.2f, 0f, 1f);
             abundanceValue *= remainingHarvestable;
-           if (printDebug)
-            {
-                System.Diagnostics.Debug.WriteLine("4. Fish depletion here " + ((1 - remainingHarvestable) * 100) + "% (caught: " + alreadyHarvested + ")");
-            }
+            if (printDebug) System.Diagnostics.Debug.WriteLine("4. Fish depletion here " + ((1 - remainingHarvestable) * 100) + "% (caught: " + alreadyHarvested + ")");
 
             __result = spawnable[__instance.Api.World.Rand.Next(spawnable.Count)];
-            if (printDebug)
-            {
-                System.Diagnostics.Debug.WriteLine("5. Randomly selected fish: " + __result.Code);
-            }
+            if (printDebug) System.Diagnostics.Debug.WriteLine("5. Randomly selected fish: " + __result.Code);
+
+            Console.WriteLine("[FishingConfig] Final abundance: " + abundanceValue);
             return false;
         }
     }
@@ -340,14 +343,15 @@ namespace FishingConfig
     [HarmonyPatch(typeof(EntityBobber), "getPondSize")]
     public class PondSizePatch
     {
-        static FieldInfo visitedField = typeof(EntityBobber).GetField("visited", BindingFlags.Instance | BindingFlags.NonPublic); 
-        static FieldInfo bfsQueueField = typeof(EntityBobber).GetField("bfsQueue", BindingFlags.Instance | BindingFlags.NonPublic); 
-        
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "visited")]
+        extern static ref HashSet<FastVec3i> getVisited(EntityBobber @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "bfsQueue")]
+        extern static ref Queue<FastVec3i> getBfsQueue(EntityBobber @this);
+
         public static bool Prefix(EntityBobber __instance, ref int __result)
         {
-            TypedReference thisBobber = __makeref(__instance);
-            HashSet<FastVec3i> visited = (HashSet<FastVec3i>) visitedField.GetValueDirect(thisBobber); 
-            Queue<FastVec3i> bfsQueue = (Queue<FastVec3i>) bfsQueueField.GetValueDirect(thisBobber); 
+            HashSet<FastVec3i> visited = getVisited(__instance); 
+            Queue<FastVec3i> bfsQueue = getBfsQueue(__instance); 
 
             IBlockAccessor blockAccessor = __instance.Api.World.BlockAccessor;
             visited.Clear();

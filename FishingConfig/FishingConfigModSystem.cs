@@ -34,5 +34,6 @@ public class FishingConfigModSystem : ModSystem
         api.ModLoader.GetModSystem<ModSystemFishDepletion>()?.Scale = options.FishHarvestScale;
         ModSystemFishDepletion.MaxHarvestablePerLocation = options.FishHarvestLimit;
         ModSystemFishDepletion.RestoreFishAfterDays = options.FishHarvestRestoreDays;
+        Console.WriteLine("[FishingConfig] Finished loading Fishing Config v" + Mod.Info.Version);
     }
 }
