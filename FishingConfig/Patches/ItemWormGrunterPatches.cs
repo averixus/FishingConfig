@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -17,13 +18,15 @@ namespace FishingConfig
     [HarmonyPatch(typeof(ModSystemWormGrunting), "restoreEarthWorms")]
     public class RestoreWormsPatch
     {
-        static FieldInfo harvestedLocationsField = typeof(ModSystemWormGrunting).GetField("harvestedLocations", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo sapiField = typeof(ModSystemWormGrunting).GetField("sapi", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "harvestedLocations")]
+        extern static ref Dictionary<BlockPos, CreatureHarvest> getHarvestedLocations(ModSystemWormGrunting @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "sapi")]
+        extern static ref ICoreServerAPI getSapi(ModSystemWormGrunting @this);
+
         public static bool Prefix(ModSystemWormGrunting __instance, float dt)
         {
-            TypedReference thisSystem = __makeref(__instance);
-            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = (Dictionary<BlockPos, CreatureHarvest>) harvestedLocationsField.GetValueDirect(thisSystem);
-            ICoreServerAPI sapi = (ICoreServerAPI) sapiField.GetValueDirect(thisSystem);
+            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = getHarvestedLocations(__instance);
+            ICoreServerAPI sapi = getSapi(__instance);
 
             List<BlockPos> list = new List<BlockPos>(harvestedLocations.Keys);
             double totalDays = sapi.World.Calendar.TotalDays;
@@ -35,7 +38,6 @@ namespace FishingConfig
                 }
             }
 
-            harvestedLocationsField.SetValueDirect(thisSystem, harvestedLocations);
             return false;
         }
     }
@@ -43,14 +45,15 @@ namespace FishingConfig
     [HarmonyPatch(typeof(ModSystemWormGrunting), "GetInitialDensity")]
     public class InitialDensityPatch
     {
-        static FieldInfo noiseGenField = typeof(ModSystemWormGrunting).GetField("noiseGen", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo sapiField = typeof(ModSystemWormGrunting).GetField("sapi", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "noiseGen")]
+        extern static ref NormalizedSimplexNoise getNoiseGen(ModSystemWormGrunting @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "sapi")]
+        extern static ref ICoreServerAPI getSapi(ModSystemWormGrunting @this);
 
         public static bool Prefix(ModSystemWormGrunting __instance, BlockPos pos, ref float __result)
         {
-            TypedReference thisSystem = __makeref(__instance);
-            NormalizedSimplexNoise noiseGen = (NormalizedSimplexNoise) noiseGenField.GetValueDirect(thisSystem);
-            ICoreServerAPI sapi = (ICoreServerAPI) sapiField.GetValueDirect(thisSystem);
+            NormalizedSimplexNoise noiseGen = getNoiseGen(__instance);
+            ICoreServerAPI sapi = getSapi(__instance);
             Options options = FishingConfigModSystem.options;
 
             double noise = noiseGen.Noise(pos.X, pos.Z);
@@ -64,13 +67,15 @@ namespace FishingConfig
     [HarmonyPatch(typeof(ModSystemWormGrunting), "GetEarthWormAmount")]
     public class WormDensityPatch
     {
-        static FieldInfo harvestedLocationsField = typeof(ModSystemWormGrunting).GetField("harvestedLocations", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo sapiField = typeof(ModSystemWormGrunting).GetField("sapi", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "harvestedLocations")]
+        extern static ref Dictionary<BlockPos, CreatureHarvest> getHarvestedLocations(ModSystemWormGrunting @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "sapi")]
+        extern static ref ICoreServerAPI getSapi(ModSystemWormGrunting @this);
+
         public static bool Prefix(ModSystemWormGrunting __instance, BlockPos pos, ref float __result)
         {
-            TypedReference thisSystem = __makeref(__instance);
-            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = (Dictionary<BlockPos, CreatureHarvest>) harvestedLocationsField.GetValueDirect(thisSystem);
-            ICoreServerAPI sapi = (ICoreServerAPI) sapiField.GetValueDirect(thisSystem);
+            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = getHarvestedLocations(__instance);
+            ICoreServerAPI sapi = getSapi(__instance);
             Options options = FishingConfigModSystem.options;
 
             __result = __instance.GetInitialDensity(pos) * (options.MaxWormDensity / 1.56f); // Gives a result between 0 and MaxWormDensity
@@ -88,14 +93,15 @@ namespace FishingConfig
     [HarmonyPatch(typeof(ModSystemWormGrunting), "AddHarvest")]
     public class AddHarvestPatch
     {
-        static FieldInfo harvestedLocationsField = typeof(ModSystemWormGrunting).GetField("harvestedLocations", BindingFlags.Instance | BindingFlags.NonPublic);
-        static FieldInfo sapiField = typeof(ModSystemWormGrunting).GetField("sapi", BindingFlags.Instance | BindingFlags.NonPublic);
-
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "harvestedLocations")]
+        extern static ref Dictionary<BlockPos, CreatureHarvest> getHarvestedLocations(ModSystemWormGrunting @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "sapi")]
+        extern static ref ICoreServerAPI getSapi(ModSystemWormGrunting @this);
+        
         public static bool Prefix(ModSystemWormGrunting __instance, BlockPos pos, int quantity)
         {
-            TypedReference thisSystem = __makeref(__instance);
-            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = (Dictionary<BlockPos, CreatureHarvest>) harvestedLocationsField.GetValueDirect(thisSystem);
-            ICoreServerAPI sapi = (ICoreServerAPI) sapiField.GetValueDirect(thisSystem);
+            Dictionary<BlockPos, CreatureHarvest> harvestedLocations = getHarvestedLocations(__instance);
+            ICoreServerAPI sapi = getSapi(__instance);
             Options options = FishingConfigModSystem.options;
 
             harvestedLocations.TryGetValue(pos / options.WormHarvestScale, out var value);
@@ -112,15 +118,19 @@ namespace FishingConfig
     [HarmonyPatch(typeof(ItemWormGrunter), "OnHeldInteractStart")]
     public class InteractStartPatch
     {
-        static FieldInfo apiField = typeof(CollectibleObject).GetField("api", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo getCoolingMedium = typeof(CollectibleObject).GetMethod("getCoolingMedium", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo tryEatBegin = typeof(CollectibleObject).GetMethod("tryEatBegin", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo startSound = typeof(ItemWormGrunter).GetMethod("startSound", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "api")]
+        extern static ref ICoreAPI getApi(CollectibleObject @this);
+
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "getCoolingMedium")]
+        extern static ICoolingMedium getCoolingMedium(CollectibleObject @this, BlockSelection blockSel);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "tryEatBegin")]
+        extern static void tryEatBegin(CollectibleObject @this, ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handling, string eatSound = "eat", int eatSoundRepeats = 1);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "startSound")]
+        extern static void startSound(ItemWormGrunter @this, EntityAgent byEntity);
 
         public static bool Prefix(ItemWormGrunter __instance, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            TypedReference thisItem = __makeref(__instance);
-            ICoreAPI api = (ICoreAPI) apiField.GetValueDirect(thisItem);
+            ICoreAPI api = getApi(__instance);
             Options options = FishingConfigModSystem.options;
 
             if (!firstEvent || blockSel == null || blockSel.Face != BlockFacing.UP || !byEntity.Controls.ShiftKey)
@@ -178,7 +188,7 @@ namespace FishingConfig
             }
 
             handling = EnumHandHandling.PreventDefault;
-            startSound.Invoke(__instance, [byEntity]);
+            startSound(__instance, byEntity);
             if (api.Side == EnumAppSide.Server)
             {
                 float earthWormAmount = api.ModLoader.GetModSystem<ModSystemWormGrunting>().GetEarthWormAmount(blockSel.Position);
@@ -190,16 +200,18 @@ namespace FishingConfig
         }
     }
     
-    
     [HarmonyPatch(typeof(ItemWormGrunter), "OnHeldInteractStep")]
     public class InteractStepPatch
     {
-        static FieldInfo apiField = typeof(CollectibleObject).GetField("api", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo spawnWorm = typeof(ItemWormGrunter).GetMethod("spawnWorm", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "api")]
+        extern static ref ICoreAPI getApi(CollectibleObject @this);
+
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "spawnWorm")]
+        extern static void spawnWorm(ItemWormGrunter @this, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, int amount);
+        
         public static bool Prefix (ItemWormGrunter __instance, float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref bool __result)
         {
-            TypedReference thisItem = __makeref(__instance);
-            ICoreAPI api = (ICoreAPI) apiField.GetValueDirect(thisItem);
+            ICoreAPI api = getApi(__instance);
             Options options = FishingConfigModSystem.options;
 
             if (blockSel == null || blockSel.Face != BlockFacing.UP)
@@ -223,7 +235,7 @@ namespace FishingConfig
                 if (block.Fertility >= options.MinWormBlockFertility && secondsUsed >= options.WormStartSearchDelay && wormsAvailable > 0 && api.World.Rand.NextDouble() < options.GetWormChance)
                 {
                     int spawnNow = (wormsAvailable > 1 && api.World.Rand.NextDouble() < options.GetExtraWormChance) ? 2 : 1;
-                    spawnWorm.Invoke(__instance, [slot, byEntity, blockSel, spawnNow]);
+                    spawnWorm(__instance, slot, byEntity, blockSel, spawnNow);
                     slot.Itemstack.TempAttributes.SetInt("spawnAmount", wormsAvailable - spawnNow);
                 }
             }
@@ -236,17 +248,22 @@ namespace FishingConfig
     [HarmonyPatch(typeof(ItemWormGrunter), "OnHeldInteractStop")]
     public class InteractStopPatch
     {
-        static FieldInfo apiField = typeof(CollectibleObject).GetField("api", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo spawnWorm = typeof(ItemWormGrunter).GetMethod("spawnWorm", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo stopSound = typeof(ItemWormGrunter).GetMethod("stopSound", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo tryEatStop = typeof(CollectibleObject).GetMethod("tryEatStop", BindingFlags.Instance | BindingFlags.NonPublic);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "api")]
+        extern static ref ICoreAPI getApi(CollectibleObject @this);
+
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "spawnWorm")]
+        extern static void spawnWorm(ItemWormGrunter @this, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, int amount);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "stopSound")]
+        extern static void stopSound(ItemWormGrunter @this);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "tryEatStop")]
+        extern static void tryEatStop(CollectibleObject @this, float secondsUsed, ItemSlot slot, EntityAgent byEntity);
+
         public static bool Prefix (ItemWormGrunter __instance, float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            TypedReference thisItem = __makeref(__instance);
-            ICoreAPI api = (ICoreAPI) apiField.GetValueDirect(thisItem);
+            ICoreAPI api = getApi(__instance);
             Options options = FishingConfigModSystem.options;
             
-            stopSound.Invoke(__instance, []);
+            stopSound(__instance);
             byEntity.AnimManager.StopAnimation("wormgrunting");
             if (blockSel == null || blockSel.Face != BlockFacing.UP)
             {
@@ -261,7 +278,7 @@ namespace FishingConfig
 
                 if (wormsAvailable > 0)
                 {
-                    spawnWorm.Invoke(__instance, [slot, byEntity, blockSel, wormsAvailable]);
+                    spawnWorm(__instance, slot, byEntity, blockSel, wormsAvailable);
                 }
             }
 
@@ -291,7 +308,7 @@ namespace FishingConfig
 
             if (!flag)
             {
-                tryEatStop.Invoke(__instance, [secondsUsed, slot, byEntity]);
+                tryEatStop(__instance, secondsUsed, slot, byEntity);
             }
             // End of base.OnHeldInteractStep
 
