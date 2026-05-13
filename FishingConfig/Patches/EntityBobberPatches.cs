@@ -44,7 +44,7 @@ namespace FishingConfig
             ref EnumBobberState bobberState = ref getBobberState(__instance);
             ref EntityPartitioning ep = ref getEp(__instance);
             ref float catchAccum = ref getCatchAccum(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             getRandomFishEntityProperties(__instance, __instance.BaitStack, out float catchLikelihood, false);
             Console.WriteLine("[FishingConfig] catch likelihood retrieved " + catchLikelihood);
@@ -163,7 +163,7 @@ namespace FishingConfig
         public static bool Prefix(EntityBobber __instance, EntityAgent entityCatcher)
         {
             EnumBobberState bobberState = getBobberState(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
  
             ItemStack[] drops = [];
 
@@ -255,7 +255,7 @@ namespace FishingConfig
         {
             Console.WriteLine("[FishingConfig] getRandomFishEntityProperties");
             int pondSize = getCurrentPondSize(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             abundanceValue = 0f;
 
@@ -376,7 +376,7 @@ namespace FishingConfig
                     FastVec3i pos = new FastVec3i(blockPos);
                     if (visited.Add(pos))
                     {
-                        if (__result > FishingConfigModSystem.options.MaxPondSize)
+                        if (__result > Options.Instance.MaxPondSize)
                         {
                             return false;
                         }

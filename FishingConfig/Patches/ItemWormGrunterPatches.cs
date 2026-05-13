@@ -32,7 +32,7 @@ namespace FishingConfig
             double totalDays = sapi.World.Calendar.TotalDays;
             foreach (BlockPos item in list)
             {
-                if (totalDays - harvestedLocations[item].TotalDays > FishingConfigModSystem.options.WormHarvestRestoreDays)
+                if (totalDays - harvestedLocations[item].TotalDays > Options.Instance.WormHarvestRestoreDays)
                 {
                     harvestedLocations.Remove(item);
                 }
@@ -54,7 +54,7 @@ namespace FishingConfig
         {
             NormalizedSimplexNoise noiseGen = getNoiseGen(__instance);
             ICoreServerAPI sapi = getSapi(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             double noise = noiseGen.Noise(pos.X, pos.Z);
             float maxed = Math.Max(0f, (float)(noise - options.NoWormsChance) * (1.5f / (1f - options.NoWormsChance))); // Scale the result to between 0 and 1.5, with NoWormsChance of being 0
@@ -76,7 +76,7 @@ namespace FishingConfig
         {
             Dictionary<BlockPos, CreatureHarvest> harvestedLocations = getHarvestedLocations(__instance);
             ICoreServerAPI sapi = getSapi(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             __result = __instance.GetInitialDensity(pos) * (options.MaxWormDensity / 1.56f); // Gives a result between 0 and MaxWormDensity
             float temperature = sapi.World.BlockAccessor.GetClimateAt(pos).Temperature;
@@ -102,7 +102,7 @@ namespace FishingConfig
         {
             Dictionary<BlockPos, CreatureHarvest> harvestedLocations = getHarvestedLocations(__instance);
             ICoreServerAPI sapi = getSapi(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             harvestedLocations.TryGetValue(pos / options.WormHarvestScale, out var value);
             harvestedLocations[pos / options.WormHarvestScale] = new CreatureHarvest
@@ -131,7 +131,7 @@ namespace FishingConfig
         public static bool Prefix(ItemWormGrunter __instance, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             ICoreAPI api = getApi(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             if (!firstEvent || blockSel == null || blockSel.Face != BlockFacing.UP || !byEntity.Controls.ShiftKey)
             {
@@ -212,7 +212,7 @@ namespace FishingConfig
         public static bool Prefix (ItemWormGrunter __instance, float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref bool __result)
         {
             ICoreAPI api = getApi(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
 
             if (blockSel == null || blockSel.Face != BlockFacing.UP)
             {
@@ -220,7 +220,7 @@ namespace FishingConfig
                 return false;
             }
 
-            float timeLimit = (api.Side == EnumAppSide.Server) ? options.WormGruntingTime : options.WormGruntingTime + 1;
+            float timeLimit = (api.Side == EnumAppSide.Server) ? options.WormGruntingTime + options.WormStartSearchDelay : options.WormGruntingTime + options.WormStartSearchDelay + 1;
             if (secondsUsed > timeLimit)
             {
                 __result = false;
@@ -261,7 +261,7 @@ namespace FishingConfig
         public static bool Prefix (ItemWormGrunter __instance, float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             ICoreAPI api = getApi(__instance);
-            Options options = FishingConfigModSystem.options;
+            Options options = Options.Instance;
             
             stopSound(__instance);
             byEntity.AnimManager.StopAnimation("wormgrunting");

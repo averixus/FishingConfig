@@ -4,6 +4,8 @@ namespace FishingConfig;
 
 public class Options
 {
+    public static Options Instance { get; set; } = new Options();
+    
     public float JunkCatchChance = 0.05f;
     public float ReelInTimer = 0.7f;
     public bool CatchStockFish = true; 

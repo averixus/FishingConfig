@@ -1,0 +1,165 @@
+{
+    "version": 1,
+    "file": "FishingConfig.json",
+    "patches": {},
+    "settings": [
+        {
+            "type": "separator",
+            "title": "Fishing"
+        },
+        {
+            "code": "JunkCatchChance",
+            "comment": "The likelihood of getting a junk item when catching a fish from the 'invisible stock'. Note: this value overrides the value set in the bobber.json asset file. The possible junk items you can get are still determined by the list in that file.",
+            "type": "float",
+            "default": 0.05
+        },
+        {
+            "code": "ReelInTimer",
+            "comment": "The number of seconds you have to reel in a catch after it bites, before it gets away with your bait.",
+            "type": "float",
+            "default": 0.7
+        },
+        {
+            "code": "CatchStockFish",
+            "comment": "Whether fishing poles can catch fish from the 'invisible stock'. If false, you can only catch visible swimming entities.",
+            "type": "boolean",
+            "default": true
+        },
+        {
+            "code": "FishLureEntityTimer",
+            "comment": "The amount of time in seconds that the fishing pole waits for a fish entity to arrive, if it detects one nearby. After this time runs out, it will resort to catching from the 'invisible stock' (if enabled).",
+            "type": "float",
+            "default": 15.0
+        },
+        {
+            "code": "FishHarvestLimit",
+            "comment": "The maximum number of fish you can harvest in one location before the 'invisible stock' abundance is depleted.",
+            "type": "integer",
+            "default": 12
+        },
+        {
+            "code": "FishHarvestRestoreDays",
+            "comment": "The number of days after the last catch in one location, until the depleted 'invisible stock' is restored.",
+            "type": "float",
+            "default": 14.0
+        },
+        {
+            "code": "FishHarvestScale",
+            "comment": "The size in blocks of each area for the purposes of depleting 'invisible stock' - a higher value means that fishing depletes a larger area around you.",
+            "type": "integer",
+            "default": 8
+        },
+        {
+            "code": "MinPondSize",
+            "comment": "The minimum volume of pond (in blocks) which can hold any 'invisible stock' fish. Pond below this size will never give any catch apart from visible swimming entities.",
+            "type": "integer",
+            "default": 100
+        },
+        {
+            "code": "MaxPondSize",
+            "comment": "The volume of pond (in blocks) which has the maximum 'invisible stock' abundance. Ponds below this size will have reduced abundance, and ponds above this size will have maximum abundance. Warning: Significantly increasing this value may cause performance issues, because searching large ponds is intensive.",
+            "type": "integer",
+            "default": 1200
+        },
+        {
+            "code": "FishStartSearchDelay",
+            "comment": "The number of seconds delay after casting the fishing pole before it starts searching - a higher value means all fishing will take longer.",
+            "type": "float",
+            "default": 1.0
+        },
+        {
+            "code": "MinStockCatchTime",
+            "comment": "The minimum number of seconds (after the FishStartSearchDelay time has passed) that it will take to catch something from the 'invisible stock', when the abundance is the highest possible.",
+            "type": "float",
+            "default": 5.0
+        },
+        {
+            "code": "MaxStockCatchTime",
+            "comment": "The maximum number of seconds (after the StartSearchDelay time has passed) that it will take to catch something from the 'invisible stock', when the abundance is extremely low but not zero.",
+            "type": "float",
+            "default": 125.0
+        },
+        {
+            "type": "separator",
+            "title": "Worm grunting"
+        },
+        {
+            "code": "WormHarvestRestoreDays",
+            "comment": "The number of days after the last worm collected in one location, until the population is restored.",
+            "type": "float",
+            "default": 7.0
+        },
+        {
+            "code": "MaxWormDensity",
+            "comment": "The maximum population of worms that can be available to harvest in one location.",
+            "type": "float",
+            "default": 15.0
+        },
+        {
+            "code": "WormStartSearchDelay",
+            "comment": "The number of seconds delay after starting to use the worm grunter, before worms can start to appear - a higher value means all worm grunting will take longer.",
+            "type": "float",
+            "default": 1.0
+        },
+        {
+            "code": "WormGruntingTime",
+            "comment": "The number of seconds (after the WormStartSearchDelay time has passed) that a use of the worm grunter lasts. Because of the way worms are collected, increasing this value without changing anything else will tend to mean that worms appear near the beginning of using the grunter, and using it all the way until it stops is less likely to get any more.",
+            "type": "float",
+            "default": 4.0
+        },
+        {
+            "code": "GetWormChance",
+            "comment": "The likelihood, per game tick, that a worm will be found while using the grunter (assuming there are some left in the local population).",
+            "type": "float",
+            "default": 0.06
+        },
+        {
+            "code": "GetExtraWormChance",
+            "comment": "The likelihood that, if a worm is found using the grunter, an extra worm will appear too.",
+            "type": "float",
+            "default": 0.1
+        },
+        {
+            "code": "WormHarvestScale",
+            "comment": "The size in blocks of each area for the purposes of depleting the worm population - a higher value means that grunting worms will deplete a larger area around you.",
+            "type": "integer",
+            "default": 3
+        },
+        {
+            "code": "NoWormsChance",
+            "comment": "The base likelihood that any given block will have no worms in it at all - a higher means you will need to try more blocks to find any worms.",
+            "type": "float",
+            "default": 7.0
+        },
+        {
+            "code": "MinWormClimateFertility",
+            "comment": "The minimum climate fertility level required for any worms to be found here - a higher value means you'll need to find more fertile areas of the world to collect worms.",
+            "type": "float",
+            "default": 0.2
+        },
+        {
+            "code": "MinWormTemp",
+            "comment": "The minimum current temperature for any worms to be found here - a higher value means that you'll need warmer weather to find worms.",
+            "type": "float",
+            "default": 0.0
+        },
+        {
+            "code": "MaxWormTemp",
+            "comment": "The current temperature above which worms are always at their maximum density (subject to other factors) - a higher value means that you'll need warmer weather to find the higher populations of worms.",
+            "type": "float",
+            "default": 10.0
+        },
+        {
+            "code": "MinWormBlockFertility",
+            "comment": "The minimum block fertility the targeted block needs to have to be able to find any worms. A higher value means you'll need to look for higher fertility soil to collect worms. 100 is barren soil, 150 is low, 200 is medium, 250 is high, 300 is terra preta.",
+            "type": "float",
+            "default": 100
+        },
+        {
+            "code": "AlwaysFertileFarmland",
+            "comment": "Whether farmland is automatically considered 'fertile' for worms, even if the block fertility is below MinWormBlockFertility.",
+            "type": "boolean",
+            "default": true
+        }
+    ]
+}
