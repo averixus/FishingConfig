@@ -31,19 +31,16 @@ namespace FishingConfig
         {
             if (__instance.Swimming && !___wasSwimming)
             {
-                Console.WriteLine("[FishingConfig] Bobber landed in water");
                 if (__instance.Api.World.EntityDebugMode) printLocationDebugInfo(__instance);
                 ___wasSwimming = true;
             }
 
-            Console.WriteLine("[FishingConfig] Bobber state at start of tick: " + ___bobberState);
             switch(___bobberState)
             {
                 case EnumBobberState.Baiting:
                 {
                     if (___swimmingAccum > Options.Instance.FishStartSearchDelay) // wait after casting, then check for entities or stock
                     {
-                        Console.WriteLine("[FishingConfig] Checking for nearby entities");
                         Entity nearestEntity = ___ep.GetNearestEntity(__instance.Pos.XYZ, 20.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
                         ___bobberState = (nearestEntity != null) ? EnumBobberState.FishNearby : Options.Instance.CatchStockFish ? EnumBobberState.NoFishNearby : EnumBobberState.Baiting;
                     }
@@ -55,13 +52,11 @@ namespace FishingConfig
                     {
                         if (Options.Instance.CatchStockFish) // switch to stock fish
                         {
-                            Console.WriteLine("[FishingConfig] Entity has not arrived in time, switching to stock fish");
                             ___bobberState = EnumBobberState.NoFishNearby;
 
                         }
                         else // or reset to try again if not catching stock fish
                         {
-                            Console.WriteLine("[FishingConfig] Entity has not arrived in time, resetting to baiting");
                             ___bobberState = EnumBobberState.Baiting;
                             ___swimmingAccum = 1f;
                         }
@@ -72,7 +67,6 @@ namespace FishingConfig
                         string bait = __instance.BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
                         if (nearestEntity != null && nearestEntity.Properties.Attributes["baitTags"].AsArray<string>().Contains<string>(bait))
                         {
-                            Console.WriteLine("[FishingConfig] Catching entity " + nearestEntity);
                             ___bobberState = EnumBobberState.NoCatch; // using this as an alias for EntityFishCatch which should be a separate state
                             __instance.caughtFish = nearestEntity as EntityFish;
                             ___catchAccum += dt;
@@ -84,10 +78,8 @@ namespace FishingConfig
                 case EnumBobberState.NoFishNearby:
                 {
                     getRandomFishEntityProperties(__instance, __instance.BaitStack, out float catchLikelihood, false);
-                    Console.WriteLine("[FishingConfig] catch likelihood retrieved " + catchLikelihood);
                     if (catchLikelihood > 0 && ___swimmingAccum > Options.Instance.MinStockCatchTime / Math.Max(Options.Instance.MinStockCatchTime / Options.Instance.MaxStockCatchTime, catchLikelihood)) // wait according to abundance, then catch from stock
                     {
-                        Console.WriteLine("[FishingConfig] Catching from stock");
                         ___bobberState = __instance.Api.World.Rand.NextDouble() < (double) Options.Instance.JunkCatchChance ?
                                 EnumBobberState.JunkCatch : EnumBobberState.NoEntityFishCatch; // catch junk or stock fish according to chance
                         ___catchAccum += dt;
@@ -101,10 +93,8 @@ namespace FishingConfig
                 {
                     if (___catchAccum > Options.Instance.ReelInTimer) // wait for player to reel in catch, then reset
                     {
-                        Console.WriteLine("[FishingConfig] Player too slow to reel in");
                         if (__instance.caughtFish != null) // if there's a fish entity, let it go
                         {
-                            Console.WriteLine("[FishingConfig] Releasing entity");
                             AiTaskManager taskManager = __instance.caughtFish.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
                             IAiTask aiTask = taskManager?.GetTask("fleebobber");
                             if (aiTask != null)
@@ -122,7 +112,6 @@ namespace FishingConfig
                     }
                     else
                     {
-                        Console.WriteLine("[FishingConfig] Waiting for player to reel in");
                         ___catchAccum += dt;
                     }
                     break;
@@ -149,7 +138,6 @@ namespace FishingConfig
                 {
                     if (__instance.caughtFish != null && __instance.caughtFish.Alive)
                     {
-                        Console.WriteLine("[FishingConfig] Killing entity and getting drops");
                         __instance.caughtFish.Die(EnumDespawnReason.Expire);
                         drops = __instance.caughtFish.GetDrops(__instance.World, __instance.caughtFish.Pos.XYZInt.AsBlockPos, (entityCatcher as EntityPlayer)?.Player);
                     }
@@ -157,7 +145,6 @@ namespace FishingConfig
                 }
                 case EnumBobberState.NoEntityFishCatch:
                 {
-                    Console.WriteLine("[FishingConfig] Getting aged fish drops from stock");
                     EntityProperties fishCatch = getRandomFishEntityProperties(__instance, __instance.BaitStack, out float abundanceValue, false);
 
                     ItemStack fishStack = fishCatch.Drops[0].ResolvedItemstack;
@@ -173,7 +160,6 @@ namespace FishingConfig
                 }
                 case EnumBobberState.JunkCatch:
                 {
-                    Console.WriteLine("[FishingConfig] Getting junk drop");
                     WeightedBlockDropItemstack[] junkCatches = __instance.Properties.Attributes["junkCatches"].AsObject<WeightedBlockDropItemstack[]>();
                     double total = 0d;
                     foreach (WeightedBlockDropItemstack junkCatch in junkCatches)
@@ -226,15 +212,11 @@ namespace FishingConfig
 
         public static bool Prefix(EntityBobber __instance, ref int ___pondSize, ItemStack baitStack, out float abundanceValue, bool printDebug, ref EntityProperties __result)
         {
-            Console.WriteLine("[FishingConfig] getRandomFishEntityProperties");
-
             abundanceValue = 0f;
-
             ClimateCondition climate = __instance.World.BlockAccessor.GetClimateAt(__instance.Pos.AsBlockPos, EnumGetClimateMode.WorldGenValues);
 
             if (climate == null) // no abundance and no catch chance if invalid climate
             {
-                Console.WriteLine("[FishingConfig] Invalid climate for fish stock");
                 __result = null;
                 return false;
             }
@@ -242,7 +224,6 @@ namespace FishingConfig
             ___pondSize = ___pondSize < 0 ? (int) calculatePondSize(__instance) : ___pondSize; // calculate if not yet done
             if (___pondSize < Options.Instance.MinPondSize) // no abundance and no catch chance if pond too small
             {
-                Console.WriteLine("[FishingConfig] Pond too small for fish stock");
                 __result = null;
                 return false;
             }
@@ -275,7 +256,6 @@ namespace FishingConfig
 
                     if (likesBait && animalMap.GetUnpaddedLerped(xInAnimalMap, zInAnimalMap) > 128f)
                     {
-                        Console.WriteLine("[FishingConfig] Adding possible catch to fish stock: " + entityType.Class);
                         spawnable.Add(entityType);
                     }
                 }
@@ -285,7 +265,6 @@ namespace FishingConfig
 
             if (spawnable.Count == 0) // no abundance and no catch chance if no valid fish types
             {
-                Console.WriteLine("[FishingConfig] No valid stock fish");
                 __result = null;
                 return false;
             }
@@ -306,7 +285,6 @@ namespace FishingConfig
             __result = spawnable[__instance.Api.World.Rand.Next(spawnable.Count)];
             if (printDebug) Debug.WriteLine("5. Randomly selected fish: " + __result.Code);
 
-            Console.WriteLine("[FishingConfig] Final abundance: " + abundanceValue);
             return false;
         }
     }
@@ -316,13 +294,10 @@ namespace FishingConfig
     {
         public static bool Prefix(EntityBobber __instance, ref HashSet<FastVec3i> ___visited, ref Queue<FastVec3i> ___bfsQueue, ref int __result)
         {
-            Console.WriteLine("[FishingConfig] calculating pond size");
-
             ___visited.Clear();
             ___bfsQueue.Clear();
             BlockPos blockPos = __instance.Pos.AsBlockPos;
             ___bfsQueue.Enqueue(new FastVec3i(blockPos.X, blockPos.Y, blockPos.Z));
-            Console.WriteLine("[FishingConfig] added to bfsqueue, now contains " + ___bfsQueue.Count + ": " + ___bfsQueue.ToArray());
             BlockFacing[] directions =
             [
                 BlockFacing.NORTH,
@@ -335,32 +310,25 @@ namespace FishingConfig
             while (___bfsQueue.Count > 0)
             {
                 FastVec3i next = ___bfsQueue.Dequeue();
-                Console.WriteLine("[FishingConfig] something in bfsqueue, next is " + next);
                 foreach (BlockFacing direction in directions)
                 {
                     blockPos.Set(next.X + direction.Normali.X, next.Y + direction.Normali.Y, next.Z + direction.Normali.Z);
                     FastVec3i pos = new FastVec3i(blockPos);
-                    Console.WriteLine("[FishingConfig] looking at " + pos);
                     if (___visited.Add(pos))
                     {
-                        Console.WriteLine("[FishingConfig] added to visited");
                         if (__result > Options.Instance.MaxPondSize)
                         {
-                            Console.WriteLine("over max size");
                             return false;
                         }
 
-                        Console.WriteLine("[FishingConfig] current block: " + __instance.Api.World.BlockAccessor.GetBlock(blockPos, 2));
                         if (__instance.Api.World.BlockAccessor.GetBlock(blockPos, 2).Id != 0)
                         {
-                            Console.WriteLine("[FishingConfig] queueing next");
                             ___bfsQueue.Enqueue(pos);
                             __result++;
                         }
                     }
                 }
             }
-            Console.WriteLine("[FishingConfig] pond size calculated " + __result);
             return false;
         }
     }

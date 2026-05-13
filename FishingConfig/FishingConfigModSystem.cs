@@ -39,8 +39,6 @@ public class FishingConfigModSystem : ModSystem
         {
             ConnectConfigLib(api);
         }
-
-        Console.WriteLine("[FishingConfig] Finished loading Fishing Config v" + Mod.Info.Version);
     }
 
     private void ConnectConfigLib(ICoreAPI api)
