@@ -196,7 +196,7 @@ namespace FishingConfig
                 }
 
                 ItemSlot slot = entityCatcher.ActiveHandItemSlot;
-                slot.Itemstack.Collectible.DamageItem(__instance.World, entityCatcher, slot);
+                slot.Itemstack.Collectible.DamageItem(__instance.World, entityCatcher, slot, Options.Instance.ReeledCatchDamage);
                 slot.MarkDirty();
             }
 
@@ -333,7 +333,6 @@ namespace FishingConfig
         }
     }
 
-    /* This method gets called twice on the server side and I don't know why. Let's say double damage is intentional when the rope breaks */
     [HarmonyPatch(typeof(EntityBobber), "OnRopeRipped")]
     public class RopeRippedPatch
     {
@@ -341,9 +340,10 @@ namespace FishingConfig
         {
             EntityAgent entity = __instance.Api.World.GetEntityById(__instance.AttachedToEntityId) as EntityAgent;
             ItemSlot slot = entity?.ActiveHandItemSlot;
-            slot?.Itemstack?.Collectible?.DamageItem(__instance.Api.World, entity, slot);
+            slot?.Itemstack?.Collectible?.DamageItem(__instance.Api.World, entity, slot, Options.Instance.RopeSnappedDamage);
             slot?.MarkDirty();
-            return true;
+            __instance.Die();
+            return false;
         }
     }
 }

@@ -18,6 +18,8 @@ public class Options
     public float FishStartSearchDelay = 1f;
     public float MinStockCatchTime = 5f;
     public float MaxStockCatchTime = 125f;
+    public int ReeledCatchDamage = 1;
+    public int RopeSnappedDamage = 2;
 
 
     public float WormHarvestRestoreDays = 7f;
