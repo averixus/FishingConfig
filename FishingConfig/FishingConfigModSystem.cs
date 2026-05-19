@@ -10,6 +10,7 @@ namespace FishingConfig;
 public class FishingConfigModSystem : ModSystem
 {
     public static Options Options => Options.Instance;
+    Harmony Harmony;
 
     public override double ExecuteOrder()
     {
@@ -32,13 +33,22 @@ public class FishingConfigModSystem : ModSystem
 
         UpdateFishingModSystem(api);
 
-        var harmony = new Harmony(Mod.Info.ModID);
-        harmony.PatchAll(typeof(FishingConfigModSystem).Assembly);
+        Harmony = new Harmony(Mod.Info.ModID);
+        if (!Harmony.HasAnyPatches(Harmony.Id))
+        {
+            Harmony.PatchAll(typeof(FishingConfigModSystem).Assembly);
+        }
 
         if (api.ModLoader.IsModEnabled("configlib"))
         {
             ConnectConfigLib(api);
         }
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        Harmony.UnpatchAll();
     }
 
     private void ConnectConfigLib(ICoreAPI api)
