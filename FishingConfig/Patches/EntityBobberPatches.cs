@@ -340,10 +340,13 @@ namespace FishingConfig
         {
             EntityAgent entity = __instance.Api.World.GetEntityById(__instance.AttachedToEntityId) as EntityAgent;
             ItemSlot slot = entity?.ActiveHandItemSlot;
-            slot?.Itemstack?.Collectible?.DamageItem(__instance.Api.World, entity, slot, Options.Instance.RopeSnappedDamage);
-            slot?.MarkDirty();
-            __instance.Die();
-            return false;
+            CollectibleObject item = slot?.Itemstack?.Collectible;
+            if (item is ItemFishingPole)
+            {
+                item.DamageItem(__instance.Api.World, entity, slot, Options.Instance.RopeSnappedDamage);
+                slot?.MarkDirty();
+            }
+            return true;
         }
     }
 }
