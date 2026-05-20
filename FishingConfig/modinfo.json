@@ -7,7 +7,7 @@
         "Averixus"
     ],
     "description": "Fix bugs and add config settings for vanilla fishing",
-    "version": "1.5.1-pre.1",
+    "version": "1.6.0",
     "dependencies": {
         "game": "1.22.0"
     }
